@@ -12,7 +12,7 @@ require("./authentication/auth") // Signup and login authentication middleware
 const searchRoute = require('./routes/searchBlog');
 const { create } = require('./models/users');
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const app = express();
 
 app.use(express.json());

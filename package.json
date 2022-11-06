@@ -2,9 +2,11 @@
   "name": "routing_express",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "node.js",
+
   "scripts": {
-    "test": "cross-env NODE_ENV=test jest --testTimeout=19000"
+    "test": "cross-env NODE_ENV=test jest --testTimeout=19000",
+    "start": "node app.js"
   },
   "keywords": [],
   "author": "",
