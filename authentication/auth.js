@@ -1,55 +1,87 @@
-const express = require('express');
 const passport = require('passport');
-const jwt = require('jsonwebtoken');
+const localStrategy = require('passport-local').Strategy;
+const UserModel = require('../models/users');
+
+const JWTstrategy = require('passport-jwt').Strategy;
+const ExtractJWT = require('passport-jwt').ExtractJwt;
+
 require('dotenv').config();
 
-const authRouter = express.Router();
 
-authRouter.post('/signup', passport.authenticate('signup', { session: false }), async (req, res, next) => {
-
-        res.json({
-            message: 'Signup successful',
-            user: req.user
-        });
-        
-    }
-);
-
-authRouter.post(
-    '/login',
-    async (req, res, next) => {
-        passport.authenticate('login', async (err, user, info) => {
+passport.use(
+    new JWTstrategy(
+        {
+            secretOrKey: process.env.JWT_Secret,
+            jwtFromRequest: ExtractJWT.fromUrlQueryParameter('secret_token')
+            // jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken() // Use this if you are using Bearer token
+        },  async(token, done) => {
             try {
-                if (err) {
-                    return next(err);
-                }
-                if (!user) {
-                    const error = new Error('email or password is incorrect');
-                    return next(error);
-                }
-
-                req.login(user, { session: false },
-                    async (error) => {
-                        if (error) return next(error);
-
-                        const body = { _id: user._id, email: user.email, firstName : user.firstName, lastName: user.lastName };
-                        //You store the id and email in the payload of the JWT. 
-                        // You then sign the token with a secret or key (JWT_SECRET), and send back the token to the user.
-                        // DO NOT STORE PASSWORDS IN THE JWT!
-                        const token = jwt.sign({ user : body}, process.env.JWT_SECRET, {expiresIn:'1h'});
-
-                        return res.json({ token });
-                    }
-                );
+                return done(null, token.user);
             } catch (error) {
-                return next(error);
+                done(error);
             }
         }
-        ) (req, res, next);
-    }
+    )
 );
 
-module.exports = authRouter;
+// This middleware saves the information provided by the user to the database,
+// and then sends the user information to the next middleware if successful.
+// Otherwise, it reports an error.
+passport.use(
+    'signup',
+    new localStrategy(
+        {
+            usernameField: 'email',
+            passwordField: 'password',
+            firstNameField: 'firstName', 
+             lastNameField: 'lastName',
+             passReqToCallback: true
+        },
+        async (req, email, password, done) => {
+            try {
+                console.log(req.body);
+                const firstName = req.body.firstName;
+                const lastName = req.body.lastName;
+                const user = await UserModel.users.create({ email, password, firstName, lastName});
 
-//Creating a blog..make a route create-blog route. 
-//
+                return done(null, user);
+            } 
+            catch (error) {
+                done(error);
+            }
+        }
+    )
+);
+
+// This middleware authenticates the user based on the email and password provided.
+// If the user is found, it sends the user information to the next middleware.
+// Otherwise, it reports an error.
+passport.use(
+    'login',
+    new localStrategy(
+        {
+            usernameField: 'email',
+            passwordField: 'password'
+        },
+        
+        async (email, password, done) => {
+            try {
+                const user = await UserModel.users.findOne({ email });
+
+                if (!user) {
+                    return done(null, false, { message: 'User not found' });
+                }
+
+                const validate = await user.isValidPassword(password);
+
+                if (!validate) {
+                    return done(null, false, { message: 'Wrong Password' });
+                }
+
+                return done(null, user, { message: 'Logged in Successfully' });
+            } catch (error) {
+                return done(error);
+            }
+        }
+    )
+);
