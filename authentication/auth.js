@@ -5,11 +5,13 @@ const UserModel = require('../models/users');
 const JWTstrategy = require('passport-jwt').Strategy;
 const ExtractJWT = require('passport-jwt').ExtractJwt;
 
+require('dotenv').config();
+
 
 passport.use(
     new JWTstrategy(
         {
-            secretOrKey: process.env.JWT_SECRET,
+            secretOrKey: process.env.JWT_Secret,
             jwtFromRequest: ExtractJWT.fromUrlQueryParameter('secret_token')
             // jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken() // Use this if you are using Bearer token
         },  async(token, done) => {
