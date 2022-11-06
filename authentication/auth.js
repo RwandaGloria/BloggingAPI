@@ -1,87 +1,55 @@
+const express = require('express');
 const passport = require('passport');
-const localStrategy = require('passport-local').Strategy;
-const UserModel = require('../models/users');
-
-const JWTstrategy = require('passport-jwt').Strategy;
-const ExtractJWT = require('passport-jwt').ExtractJwt;
-
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+const authRouter = express.Router();
 
-passport.use(
-    new JWTstrategy(
-        {
-            secretOrKey: process.env.JWT_Secret,
-            jwtFromRequest: ExtractJWT.fromUrlQueryParameter('secret_token')
-            // jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken() // Use this if you are using Bearer token
-        },  async(token, done) => {
-            try {
-                return done(null, token.user);
-            } catch (error) {
-                done(error);
-            }
-        }
-    )
-);
+authRouter.post('/signup', passport.authenticate('signup', { session: false }), async (req, res, next) => {
 
-// This middleware saves the information provided by the user to the database,
-// and then sends the user information to the next middleware if successful.
-// Otherwise, it reports an error.
-passport.use(
-    'signup',
-    new localStrategy(
-        {
-            usernameField: 'email',
-            passwordField: 'password',
-            firstNameField: 'firstName', 
-             lastNameField: 'lastName',
-             passReqToCallback: true
-        },
-        async (req, email, password, done) => {
-            try {
-                console.log(req.body);
-                const firstName = req.body.firstName;
-                const lastName = req.body.lastName;
-                const user = await UserModel.users.create({ email, password, firstName, lastName});
-
-                return done(null, user);
-            } 
-            catch (error) {
-                done(error);
-            }
-        }
-    )
-);
-
-// This middleware authenticates the user based on the email and password provided.
-// If the user is found, it sends the user information to the next middleware.
-// Otherwise, it reports an error.
-passport.use(
-    'login',
-    new localStrategy(
-        {
-            usernameField: 'email',
-            passwordField: 'password'
-        },
+        res.json({
+            message: 'Signup successful',
+            user: req.user
+        });
         
-        async (email, password, done) => {
+    }
+);
+
+authRouter.post(
+    '/login',
+    async (req, res, next) => {
+        passport.authenticate('login', async (err, user, info) => {
             try {
-                const user = await UserModel.users.findOne({ email });
-
+                if (err) {
+                    return next(err);
+                }
                 if (!user) {
-                    return done(null, false, { message: 'User not found' });
+                    const error = new Error('email or password is incorrect');
+                    return next(error);
                 }
 
-                const validate = await user.isValidPassword(password);
+                req.login(user, { session: false },
+                    async (error) => {
+                        if (error) return next(error);
 
-                if (!validate) {
-                    return done(null, false, { message: 'Wrong Password' });
-                }
+                        const body = { _id: user._id, email: user.email, firstName : user.firstName, lastName: user.lastName };
+                        //You store the id and email in the payload of the JWT. 
+                        // You then sign the token with a secret or key (JWT_SECRET), and send back the token to the user.
+                        // DO NOT STORE PASSWORDS IN THE JWT!
+                        const token = jwt.sign({ user : body}, process.env.JWT_SECRET, {expiresIn:'1h'});
 
-                return done(null, user, { message: 'Logged in Successfully' });
+                        return res.json({ token });
+                    }
+                );
             } catch (error) {
-                return done(error);
+                return next(error);
             }
         }
-    )
+        ) (req, res, next);
+    }
 );
+
+module.exports = authRouter;
+
+//Creating a blog..make a route create-blog route. 
+//
