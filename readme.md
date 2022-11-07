@@ -29,6 +29,8 @@ Note:
 ### ✅The owner of the blog should be logged in to perform actions
 ### ✅Use the MVC pattern
 
+### Link to project documentation
+[Click here](https://documenter.getpostman.com/view/24273780/2s8YYLKMWq#9279ff57-abde-4d41-b125-00edcbb084f2)
 ## Data Models
 ### User
 
