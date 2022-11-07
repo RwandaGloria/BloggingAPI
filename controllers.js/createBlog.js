@@ -106,6 +106,7 @@ async function deleteBlog(req, res, next) {
         }
       
             res.status(200).send(done);
+        res.json({message: "Blog Deleted Successfully!"})
         
     });
     
